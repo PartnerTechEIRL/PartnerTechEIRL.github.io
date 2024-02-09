@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset='utf-8'>
+    <meta name='viewport' content='width=device-width, user-scalable=no,
+	initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0'>
+	<meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <link rel='stylesheet' href='../../css/bootstrap.min.css'>
+	<link rel='stylesheet' type='text/css' media='screen' href='css/main.css'>
+	<title>Infraestructura Documentacion</title>
+    <script src='main.js'></script>
+</head>
+<body>
+    <header>
+		<div class="container">
+			<div class="row">
+				<div class="logo col-xs-12 col-sm-6">
+					<a href="#"><img src="img/logo-partner.png" alt="Logo partner"></a>
+					<h1>Wiki-Partner</h1>
+				</div>
+			</div>
+			<nav class="menu">
+				<div class="container">
+					<div class="row">
+						<ul class="col-md-12">
+							<p>
+                                =====MONTAJE DROPLET=====
+- Crear la instancia en Digital Ocean segun las especificaciones y presupuesto
+- Una vez creado el droplet conectarse mediante MobaXterm o una herramienta de gestion de conexiones
+- Cuando se tenga la conexion establecida, actualizar todas los paquetes instalados en el Droplet con el comando:
+	sudo yum -y update
+- Esperar a que termine todas las actualizaciones para continuar con el montaje de las siguientes herramientas
+
+=====MONTAJE BD=====
+- Verificamos el flujo de modulos disponibles para PostgreSQL con el comando:
+	dnf module list postgresql
+- Habilitamos el flujo de la version que se desea instalar con el comando:
+	sudo dnf module enable postgresql:15
+- Aceptamos habilitar el flujo para la version especificada, luego lanzar el comando para la instalacion de postgresql:
+	sudo dnf install postgresql-server
+- Aceptamos la instalación
+- Ahora procedemos a ejecutar la configuracion inicial de postgresql con el comando:
+	sudo postgresql-setup --initdb
+- Ahora encenderemos el servicio con el comando:
+	sudo systemctl start postgresql
+- Luego habilitaremos el servicio de postgresql para que al reiniciar el servidor vuelva a arrancar tambien el servicio:
+	sudo systemctl enable postgresql
+- Ahora vamos a asignar una contraseña para el usuario postgres de Linux con el comando:
+	passwd postgres
+- Ingresamos la contraseña a usar y la reconfirmamos (Mayuscula, minuscula, caracter especial, numeros - Longitud no mayor a 12)
+- Una vez establecida la contraseña, cambiaremos de usuario en consola al usuario postgres con el comando : 
+	su - postgres
+- Al cambiar de usuario podremos ingresar via consola al servidor de PostgreSQL con el comando:
+	psql
+- Ahora procederemos a configurar los archivos de postgres para habilitar las conexiones remotas a las BD
+- Abrir el archivo en la ruta: /var/lib/pgsql/data/postgresql.conf para configurar encriptacion y apertura de conexion
+#listen_addresses = 'localhost'	 >>>>>  listen_addresses = '*'	
+#password_encryption = scram-sha-256  >>>>>  password_encryption = md5
+- Abrir el archivo en la ruta: /var/lib/pgsql/data/pg_hba.conf para configurar el tipo de encriptacion de las conexiones
+# "local" is for Unix domain socket connections only
+local   all             all                                     peer
+# IPv4 local connections:
+host    all             all             127.0.0.1/32            ident
+# IPv6 local connections:
+host    all             all             ::1/128                 ident
+# Allow replication connections from localhost, by a user with the
+# replication privilege.
+local   replication     all                                     peer
+host    replication     all             127.0.0.1/32            ident
+host    replication     all             ::1/128                 ident
+
+
+# "local" is for Unix domain socket connections only
+local   all             all                                     peer
+# IPv4 local connections:
+host    all             all             127.0.0.1/32            md5
+# IPv6 local connections:
+host    all             all             ::1/128                 md5
+# Allow replication connections from localhost, by a user with the
+# replication privilege.
+local   replication     all                                     md5
+host    replication     all             127.0.0.1/32            md5
+host    replication     all             ::1/128                 md5
+host    all             all             0.0.0.0/0               md5
+
+
+- Reiniciar el servicio postgresql desde la consola para que tome en cuenta las configuraciones cambiadas
+	select pg_reload_conf();
+- Finalmente modificar la contraseña del usuario postgresql con la nueva encriptacion especificada
+	ALTER ROLE postgres WITH PASSWORD 'Des@m@s159ro!!oter'; p@rtner745CRT ; pr0ductermas@on
+- Validar la conexion al servidor desde una maquina remota.
+
+
+https://www.digitalocean.com/community/tutorials/how-to-install-and-use-postgresql-on-centos-8-es
+https://www.youtube.com/watch?v=iozqDfTKyxA
+https://stackoverflow.com/questions/64210167/unable-to-connect-to-postgres-db-due-to-the-authentication-type-10-is-not-suppor
+
+=====MONTAJE BACKEND=====
+- Con usuario root ejecutar el siguiente comando para la instalación de Java 11 OpenJDK:
+	sudo yum install java-11-openjdk
+- Aceptar la instalacion y para verificar al finalizar ejecutar comando:
+	java -version
+- El jar ejecutable se colocara en la ruta: /usr/local/backend/
+- Una vez colocado el archivo se le debe dar permisos de ejecucion con el comando:
+	chmod +x /usr/local/backend/<NOMBRE_APLICACION>.jar
+- Para ejecutarlo llamamos directo al archivo jar
+	/usr/local/backend/<NOMBRE_APLICACION>.jar
+- Generar un script en la ruta: /etc/systemd/system/<NOMBRE_APLICACION>.service para convertir el ejecutable en un servicio del sistema
+	[Unit]
+	Description=<Nombre o datos del backend ejecutado>
+
+	[Service]
+	Restart=always
+	ExecStart=/usr/local/backend/<NOMBRE_APLICACION>.jar
+	SuccessExitStatus=143
+
+	[Install]
+	WantedBy=multi-user.target
+- Habilitamos el script como servicio del sistema
+	systemctl enable <NOMBRE_APLICACION>.service
+- Ejecutamos la aplicacion como servicio
+	systemctl start <NOMBRE_APLICACION>.service
+
+https://www.digitalocean.com/community/tutorials/how-to-install-java-on-centos-and-fedora
+https://programandoointentandolo.com/2019/07/como-desplegar-aplicacion-spring-boot-angular-servidor-cloud-vps.html
+
+
+=====MONTAJE FRONTEND=====
+- Instalar un servidor web Apache con el siguiente comando
+	sudo yum -y install httpd
+- Al terminar la instalacion validar la version instalada con el comando:
+	httpd -v
+- Una vez validada la instalacion se va a habilitar el servidor apache como un servicio del sistema con el comando:
+	sudo systemctl enable httpd
+	sudo systemctl start httpd
+- Para desplegar los fronts crear una carpeta en la ruta: /var/www/html/<NOMBRE_APLICACION>
+
+https://programandoointentandolo.com/2019/07/como-desplegar-aplicacion-spring-boot-angular-servidor-cloud-vps.html
+                            </p>
+						</ul>
+					</div>
+				</div>
+			</nav>
+		</div>
+	</header>
+</body>
+</html>
